@@ -1,6 +1,18 @@
-QUnit.module("steal via system import");
+var QUnit = require("steal-qunit");
 
 QUnit.config.testTimeout = 30000;
+
+require('src/cache-bust/test/');
+require('src/env/test/');
+require('src/json/test/');
+require('src/trace/trace_test');
+
+require('test/config/config_test');
+require('test/clone/clone_test');
+require("test/babel_plugins_test");
+require("test/steal_clone_test");
+
+QUnit.module("steal via system import");
 
 (function(){
 	var hasConsole = typeof console === "object";
@@ -21,7 +33,7 @@ QUnit.config.testTimeout = 30000;
 	// Babel uses __proto__
 	var supportsES = (function(){
 		var foo = {};
-		foo.__proto = { bar: "baz" };
+		foo.__proto__ = { bar: "baz" };
 		return foo.bar === "baz";
 	})();
 
@@ -56,6 +68,7 @@ QUnit.config.testTimeout = 30000;
 				"</head>\
 				<body>\
 					<script "+src+"></script>"+
+
 					(code ? "<script>\n"+code+"</script>" :"") +
 				"</body></html>";
 
@@ -152,6 +165,54 @@ QUnit.config.testTimeout = 30000;
 		});
 	});
 
+	QUnit.test("__esModule flag is added by babel plugin", function(assert) {
+		var done = assert.async();
+
+		return System["import"]("test/babel/other")
+			.then(function(mod) {
+				assert.ok(mod.__esModule, "flag should have been added");
+				done();
+			})
+			.then(null, function(err) {
+				assert.notOk(err, "should not fail");
+				done();
+			});
+	});
+
+	QUnit.test("__esModule flag only set to ES6 modules", function(assert) {
+		var done = assert.async();
+
+		return System["import"]("test/tests/module")
+			.then(function(mod) {
+				assert.notOk(mod.__esModule, "not an ES6 module");
+				done();
+			})
+			.then(null, function(err) {
+				assert.notOk(err, "should not fail");
+				done();
+			});
+	});
+
+	QUnit.test("babel decorators plugin work", function(assert) {
+		var done = assert.async();
+
+		System["import"]("test/decorators/package.json!npm")
+			.then(function() {
+				return System["import"]("test/decorators/cellphone");
+			})
+			.then(function(mod) {
+				var Cellphone = mod.default;
+				var foo = new Cellphone();
+
+				assert.equal(foo.brand, "Bitovi", "decorators should work");
+				done();
+			})
+			.catch(function(err) {
+				assert.notOk(err, "should not fail");
+				done();
+			});
+	});
+
 	QUnit.module("steal via html");
 
 	if(supportsES) {
@@ -174,12 +235,6 @@ QUnit.config.testTimeout = 30000;
 			writeIframe(makeStealHTML(
 				"basics/basics.html",
 				'src="../steal.js?main=basics/basics"'));
-		});
-
-		asyncTest("default config path", function(){
-			writeIframe(makeStealHTML(
-				"basics/basics.html",
-				'src="../steal/steal.js?main=basics/basics"'));
 		});
 
 		asyncTest("jsx is enabled by default", function(){
@@ -352,6 +407,10 @@ QUnit.config.testTimeout = 30000;
 		makeIframe("script-tag_wins/index.html");
 	});
 
+	asyncTest("steal tag detection", function(){
+		makeIframe("last_script_tag/index.html");
+	});
+
 	if(supportsTypedArrays) {
 		asyncTest("Node builtins come for free when using npm", function(){
 			makeIframe("builtins/dev.html");
@@ -380,52 +439,6 @@ QUnit.config.testTimeout = 30000;
 		makeIframe("json/dev.html");
 	});
 
-	QUnit.module("npm");
-
-	asyncTest("default-main", function(){
-		makeIframe("npm/default-main.html");
-	});
-
-	asyncTest("alt-main", function(){
-		makeIframe("npm/alt-main.html");
-	});
-
-	// This test uses jQuery 2.x
-	if(supportsES) {
-		asyncTest("production", function(){
-			makeIframe("npm/prod.html");
-		});
-	}
-
-	asyncTest("with bower", function(){
-		makeIframe("npm/bower/index.html");
-	});
-
-	asyncTest("forward slash with npm", function(){
-		makeIframe("npm-deep/dev.html");
-	});
-
-	asyncTest("meta config is deep", function(){
-		makeIframe("meta-deep/index.html");
-	});
-
-	QUnit.module("Bower extension");
-
-	asyncTest("Basics work", function(){
-		makeIframe("bower/site.html");
-	});
-	asyncTest("Works in place of @config", function(){
-		makeIframe("bower/as_config/site.html");
-	});
-
-	asyncTest("Loads config automatically", function(){
-		makeIframe("bower/default-config.html");
-	});
-
-	asyncTest("with npm", function(){
-		makeIframe("bower/npm/index.html");
-	});
-
 	QUnit.module("Web Workers");
 
 	if(window.Worker) {
@@ -450,50 +463,16 @@ QUnit.config.testTimeout = 30000;
 		makeIframe("contextual/test.html");
 	});
 
-	QUnit.module("ext-steal-clone")
-
-	asyncTest("basics work", function() {
-		makeIframe("ext-steal-clone/basics/index.html");
-	});
-
-	asyncTest("does not share the module registry and extensions with cloned loader", function() {
-		makeIframe("ext-steal-clone/config-separation/index.html");
-	});
-
-	asyncTest("caches source of parent modules to avoid duplicate downloads", function() {
-		makeIframe("ext-steal-clone/fetch-cache/index.html");
-	});
-
-	asyncTest("works when overriding multiple modules", function() {
-		makeIframe("ext-steal-clone/multiple-overrides/index.html");
-	});
-
-	if(supportsES) {
-		asyncTest("works when using the npm extensions", function() {
-			makeIframe("ext-steal-clone/npm-extension/index.html");
-		});
-	}
-
-	asyncTest("works when a parent of injected dependency has been imported", function() {
-		makeIframe("ext-steal-clone/prior-import/index.html");
-	});
-
-	asyncTest("works when using relative imports", function() {
-		makeIframe("ext-steal-clone/relative-import/index.html");
-	});
-
-	asyncTest("works when using relative overrides", function() {
-		makeIframe("ext-steal-clone/relative-override/index.html");
-	});
-
-	asyncTest("what happens within a cloned loader should not leak", function(){
-		makeIframe("ext-steal-clone/leak/index.html");
-	});
-
 	QUnit.module("nw.js");
 
 	asyncTest("it works", function(){
 		makeIframe("nw/nw.html");
+	});
+
+	QUnit.module("Electron");
+
+	asyncTest("steal is able to load", function(){
+		makeIframe("electron/electron.html");
 	});
 
 	QUnit.module("Service Workers");
@@ -503,4 +482,14 @@ QUnit.config.testTimeout = 30000;
 			makeIframe("service-worker/dev.html");
 		});
 	}
+
+	QUnit.module("development bundles");
+
+	asyncTest("deps bundle loads AFTER configMain", function() {
+		makeIframe("dev_bundles/deps.html");
+	});
+
+	asyncTest("dev bundle loads BEFORE configMain", function() {
+		makeIframe("dev_bundles/dev.html");
+	});
 })();

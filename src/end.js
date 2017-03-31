@@ -1,12 +1,10 @@
-	if( isNode && !isNW ) {
-		require('steal-systemjs');
+	if( isNode && !isNW && !isElectron ) {
 
 		global.steal = makeSteal(System);
 		global.steal.System = System;
 		global.steal.dev = require("./ext/dev.js");
 		steal.clone = cloneSteal;
 		module.exports = global.steal;
-		global.steal.addSteal = addSteal;
 
 	} else {
 		var oldSteal = global.steal;
@@ -21,7 +19,6 @@
 				}
 			});
 		global.steal.clone = cloneSteal;
-		global.steal.addSteal = addSteal;
 	}
 
 })(typeof window == "undefined" ? (typeof global === "undefined" ? this : global) : window);

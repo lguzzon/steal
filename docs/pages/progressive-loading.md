@@ -55,14 +55,14 @@ Create _myhub.html_ with:
 Next install and run a local fileserver. [http-server](https://www.npmjs.com/package/http-server) handles our basic needs. We'll install it locally and then and it to our npm scripts:
 
 ```
-> npm install http-server --save
+> npm install http-server --save-dev
 ```
 
 Next edit your `package.json` so that the start script looks like:
 
 ```json
 "scripts": {
-  "start": "http-server"
+  "start": "http-server -c-1 ."
 }
 ```
 
@@ -81,7 +81,7 @@ Open [http://127.0.0.1:8080/myhub.html](http://127.0.0.1:8080/myhub.html). You s
 Installing these 3 dependencies gives us everything we need to build our application.
 
 ```
-> npm install steal jquery --save
+> npm install steal jquery --save-dev
 > npm install steal-tools steal-less steal-css --save-dev
 ```
 
@@ -187,7 +187,7 @@ Internally Steal resolves all module identifiers into [moduleName moduleNames], 
 Next install bootstrap with:
 
 ```
-> npm install bootstrap --save
+> npm install bootstrap --save-dev
 ```
 
 Update the _myhub.html_ to use bootstrap with:
@@ -216,7 +216,7 @@ import "./myhub.less";
 import "bootstrap/dist/css/bootstrap.css";
 
 $("body").append(`
-	<div class='container'>
+	<div class="container">
 		<h1>Goodbye script tags!</h1>
     </div>
 `);
@@ -247,7 +247,7 @@ Create _repos/repos.html_ with:
 	  <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
-    <div id="repos"/>
+    <div id="repos"></div>
     <script src="../node_modules/steal/steal.js" main="@empty"></script>
 	<script type="text/steal-module">
         import repos from "myhub/repos/repos";
@@ -319,22 +319,22 @@ import repos from "./repos";
 
 QUnit.module("myhub/repos/");
 
-QUnit.test("basics", function(){
-    QUnit.stop();
+QUnit.test("basics", function(assert){
+	var done = assert.async();
     var fixtureEl = document.getElementById("qunit-fixture");
 
     repos(fixtureEl);
 
-    QUnit.equal(
+    assert.equal(
         fixtureEl.innerHTML,
         "Loading...", "starts with loading");
 
     var interval = setInterval(function(){
         var dl = fixtureEl.getElementsByTagName("dl");
         if(dl.length === 1) {
-            QUnit.ok(true, "inserted a dl");
-            QUnit.start();
+            assert.ok(true, "inserted a dl");
             clearInterval(interval);
+			done();
         }
     },100);
 });
@@ -350,16 +350,17 @@ import "./myhub.less";
 import "bootstrap/dist/css/bootstrap.css";
 import repos from "./repos/repos";
 
-$("body").append(
-    "<div class='container'>"+
-    "<h1>Goodbye script tags!</h1>"+
-    "<div id='repos'/>"+
-    "</div>");
+$("body").append(`
+	<div class="container">
+		<h1>Goodbye script tags!</h1>
+		<div id="repos"></div>
+    </div>
+`);
 
 repos('#repos');
 ```
 
-@highlight 4,9,12
+@highlight 4,9,13
 
 ## Create test with dependency injection
 
@@ -377,27 +378,29 @@ import $ from "jquery";
 
 QUnit.module("myhub/repos/");
 
-QUnit.test("basics", function(){
-    QUnit.stop();
+QUnit.test("basics", function(assert){
+	var done = assert.async();
     var fixtureEl = document.getElementById("qunit-fixture");
 
     repos(fixtureEl);
 
-    QUnit.equal(
+    assert.equal(
         fixtureEl.innerHTML,
         "Loading...", "starts with loading");
 
     var interval = setInterval(function(){
         var dl = fixtureEl.getElementsByTagName("dl");
         if(dl.length === 1) {
-            QUnit.ok(true, "inserted a dl");
-            QUnit.start();
+            assert.ok(true, "inserted a dl");
             clearInterval(interval);
+			done();
         }
     },100);
 });
 
-QUnit.asyncTest("basics with dependency injection", function(){
+QUnit.test("basics with dependency injection", function(assert){
+	var done = assert.async();
+
     var jQuery = function(selector){
         return $(selector)
     };
@@ -413,9 +416,9 @@ QUnit.asyncTest("basics with dependency injection", function(){
 
             var html = $("#qunit-fixture").html();
 
-            QUnit.ok(/href="http:\/\/stealjs.com"/.test(html),
+            assert.ok(/href="http:\/\/stealjs.com"/.test(html),
               "updated with request");
-            QUnit.start();
+			done();
         },1);
     };
 
@@ -446,7 +449,7 @@ First we'll install a library for displaying a gallery of images. This library i
 
 Run:
 ```
-> npm install justifiedGallery --save
+> npm install justifiedGallery --save-dev
 ```
 
 ### Create the modlet
@@ -552,13 +555,9 @@ module.exports = function(selector) {
 
 @highlight 2,5-24
 
-## Build a production app
-
-Now that we've created our application we need to share it with the public. To do this we'll create a build that will concat our JavaScript and styles down to only one file, each, for faster page loads in production.
-
 ### Update app to change pages
 
-Before we do that, let's update the app so that we can toggle between the *repos* and *puppies* page depending on the [location.hash](https://developer.mozilla.org/en-US/docs/Web/API/Window/location) of the page.
+Now that we've created this new page, let's update the app so that we can toggle between the *repos* and *puppies* pages depending on the [location.hash](https://developer.mozilla.org/en-US/docs/Web/API/Window/location) of the page.
 
 Update _myhub.js_ to:
 
@@ -595,6 +594,10 @@ updatePage();
 ```
 
 @highlight 5,8-29
+
+## Build a production app
+
+Now that we've created our application we need to share it with the public. To do this we'll create a build that will concat our JavaScript and styles down to only one file, each, for faster page loads in production.
 
 ### Build the app and switch to production
 
@@ -808,7 +811,7 @@ Create _export.js_ with:
 ```js
 var stealTools = require("steal-tools");
 stealTools.export({
-  system: {
+  steal: {
     main: "myhub/repos/repos",
     config: __dirname+"/package.json!npm"
   },

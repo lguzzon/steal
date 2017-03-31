@@ -16,7 +16,7 @@ var isNode = typeof process === "object" &&
  */
 exports.translate = function(load){
 	var loader = this;
-	
+
 	// This could be an empty string if the fetch failed.
 	if(load.source == "") {
 		return "define([]);";
@@ -34,6 +34,11 @@ exports.translate = function(load){
 		// paths that are currently be loaded
 		loadingPaths: {},
 		versions: {},
+		// A map of packages to its parents. This is used so that
+		// we can find a package by name and get its parent packages,
+		// in order to load bare module specifiers that refer to packages
+		// that are not listed as dependencies
+		packageParents: {},
 		fetchCache: {},
 		deferredConversions: {},
 		npmLoad: npmLoad,
@@ -51,13 +56,15 @@ exports.translate = function(load){
 	pkgVersion[pkg.version] = context.versions.__default = pkg;
 
 	// backwards compatible for < npm 3
-	var steal = utils.pkg.config(pkg);
-	if(steal && steal.npmAlgorithm === "nested") {
+	var steal = utils.pkg.config(pkg) || {};
+
+	if(steal.npmAlgorithm === "nested"){
 		context.isFlatFileStructure = false;
-	} else {
-		pkg.steal = steal = steal || {};
+	}else{
 		steal.npmAlgorithm = "flat";
 	}
+
+	pkg.steal = steal;
 
 	return crawl.root(context, pkg, true).then(function(){
 		// clean up packages so everything is unique
@@ -69,7 +76,6 @@ exports.translate = function(load){
 					delete pkg.browser.transform;
 				}
 				pkg = utils.json.transform(loader, load, pkg);
-				var steal = utils.pkg.config(pkg);
 
 				packages.push({
 					name: pkg.name,
@@ -78,7 +84,7 @@ exports.translate = function(load){
 						pkg.fileUrl :
 						utils.relativeURI(context.loader.baseURL, pkg.fileUrl),
 					main: pkg.main,
-					steal: convert.steal(context, pkg, steal, index === 0),
+					steal: convert.steal(context, pkg, pkg.steal, index === 0),
 					globalBrowser: convert.browser(pkg, pkg.globalBrowser),
 					browser: convert.browser(pkg, pkg.browser || pkg.browserify),
 					jspm: convert.jspm(pkg, pkg.jspm),

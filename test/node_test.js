@@ -12,7 +12,7 @@ describe("default configuration", function () {
 
 	it("with a npm configuration", function (done) {
 		var steal = makeSteal({
-			config: __dirname+"/npm-deep/package.json!npm"
+			config: __dirname + "/npm/npm-deep/package.json!npm"
 		});
 		steal.startup().then(function(main){
 			assert.ok(main, 'main');
@@ -21,6 +21,18 @@ describe("default configuration", function () {
 			assert.strictEqual(steal.loader.npmContext.isFlatFileStructure, true);
 			done();
 		},done);
+	});
+
+	it("works in production", function(done){
+		var steal = makeSteal({
+			env: "server-production",
+			config: __dirname + "/node-prod/stealconfig.js",
+			main: "app/app"
+		});
+
+		steal.startup().then(function(main){
+			assert.equal(main.hello, "world");
+		}).then(done, done);
 	});
 });
 
